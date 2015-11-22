@@ -1,12 +1,12 @@
 
 ---
-html_document: null
+title: "Regression analysis of mtcars"
 author: "Andrew J. Dyck"
 keep_md: yes
 output:
-  html_document: default
   pdf_document: default
-title: "Regression analysis of mtcars"
+  html_document: default
+html_document: null
 ---
 
 # Outline #
@@ -33,9 +33,9 @@ In this section I attempt to fit a handful of models to the data and search for 
 cor(mtcars[, c('mpg', 'wt', 'disp', 'hp')])
 ```
 
-General rule-of-thumb is that multi-colinearity tends to become a problem in linear regression when pairwise correlations are over 0.75 to 0.8. This analysis will restrict the features that we can include in regression to Weight and Horsepower since the other variables are too correlated with one another and will cause violations of OLS. Instead of using engine displacement, I'll use some dummy variables for the number of cylinders in a car engine defined as:
+General rule-of-thumb is that multi-colinearity tends to become a problem in linear regression when pairwise correlations are over 0.75 to 0.8. This analysis will restrict the features that we can include in regression to Weight and Horsepower since the other variables are too correlated with one another and will cause violations of OLS. Instead of using engine displacement, I'll use some dummy variables for the number of cylinders.
 
-```{r}
+```{r, echo=FALSE}
 mtcars$cyl4 <- ifelse(mtcars$cyl==4, 1, 0)
 mtcars$cyl6 <- ifelse(mtcars$cyl==6, 1, 0)
 mtcars$cyl8 <- ifelse(mtcars$cyl==8, 1, 0)
@@ -49,16 +49,22 @@ model2 <- 'mpg ~ am + wt + hp'
 model3 <- 'mpg ~ am + wt + hp + cyl6 + cyl8'
 ```
 
+### Model Results ###
 ```{r, echo=FALSE}
+model_result <- function(fit, modelname) {
+  t1 <- c(summary(fit)$coefficients[2, c(1,4)], summary(fit)$adj.r.squared)
+  names(t1) <- c('Estimate', 'P.Value', 'AdjRSquared')
+  ret <- data.frame(t1)
+  names(ret) <- modelname
+  return(ret)
+}
 fit1 <- lm(model1, data = mtcars)
 fit2 <- lm(model2, data = mtcars)
 fit3 <- lm(model3, data = mtcars)
-```
-
-```{r}
-summary(fit1)
-summary(fit2)
-summary(fit3)
+res1 <- model_result(fit1, 'Model1')
+res2 <- model_result(fit2, 'Model2')
+res3 <- model_result(fit3, 'Model3')
+cbind(res1, res2, res3)
 ```
 
 
@@ -108,4 +114,9 @@ hist(champion$residuals, main='Histogram of residuals', xlab='Residuals')
 qqnorm(champion$residuals)
 qqline(champion$residuals, col='red')
 qqPlot(champion, 'QQ-Plot with confidence interval')
+```
+
+## Appendix 3: Full model summary #
+```{r}
+summary(champion)
 ```
