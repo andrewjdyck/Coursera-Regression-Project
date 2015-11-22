@@ -1,0 +1,111 @@
+
+---
+html_document: null
+author: "Andrew J. Dyck"
+keep_md: yes
+output:
+  html_document: default
+  pdf_document: default
+title: "Regression analysis of mtcars"
+---
+
+# Outline #
+This report investigates the question of whether an automatic or manual transmission vehicle is more fuel efficient using a sample of 32 different vehicles. An initial analysis is done to explore some features of the dataset and look for possible relationships that may explain MPG in our data sample. Next three models are defined to attempt to explain MPG in the samplem, a champion model is chosen and some model diagnostics completed. Lastly, a conclusion summarizes the analysis and determines that there is no statistical difference in fuel efficiency between automatic and manual transmission vehicles.
+
+# Exploratory Data Analysis #
+
+First, let's look at the average MPG for automatic and manual transmission vehicles. It's worthy to note that this data is discrete, not continuous, so it must be handled appropriately in this report (ie. as a dummy variable in multiple regression analysis).
+```{r, echo=FALSE}
+data(mtcars)
+library('car')
+```
+
+```{r}
+aggregate(mtcars[, c('mpg', 'cyl', 'disp', 'hp', 'wt')], by=list(mtcars$am), FUN=mean)
+```
+
+A quick plot of some features in the dataset (Appendix 1) show that there may be strong relationships between several of these features and fuel efficiency (MPG). It wouldn't be accurate to simply take the means from the table above and conclude that manual transmission vehicles have better MPG without controlling for some addtional features. 
+
+# Modeling #
+In this section I attempt to fit a handful of models to the data and search for a model among these that appears to be reasonably sound from a statistical and qualitative perspective. This model will then be the champion model for further analysis. Before diving into running regressions, I'll do a quick correlation check to ensure that multi-collinearity isn't a big problem.
+
+```{r}
+cor(mtcars[, c('mpg', 'wt', 'disp', 'hp')])
+```
+
+General rule-of-thumb is that multi-colinearity tends to become a problem in linear regression when pairwise correlations are over 0.75 to 0.8. This analysis will restrict the features that we can include in regression to Weight and Horsepower since the other variables are too correlated with one another and will cause violations of OLS. Instead of using engine displacement, I'll use some dummy variables for the number of cylinders in a car engine defined as:
+
+```{r}
+mtcars$cyl4 <- ifelse(mtcars$cyl==4, 1, 0)
+mtcars$cyl6 <- ifelse(mtcars$cyl==6, 1, 0)
+mtcars$cyl8 <- ifelse(mtcars$cyl==8, 1, 0)
+```
+
+With this outline, I will test the following three models:
+
+```{r}
+model1 <- 'mpg ~ am + wt'
+model2 <- 'mpg ~ am + wt + hp'
+model3 <- 'mpg ~ am + wt + hp + cyl6 + cyl8'
+```
+
+```{r, echo=FALSE}
+fit1 <- lm(model1, data = mtcars)
+fit2 <- lm(model2, data = mtcars)
+fit3 <- lm(model3, data = mtcars)
+```
+
+```{r}
+summary(fit1)
+summary(fit2)
+summary(fit3)
+```
+
+
+
+
+## Champion model ##
+
+I've determined that Model 2 should be the champion model. Although model 3 provides a slighly higher adjusted $R^2$, I suspect that the dummy variables I created to capture the number of cylinders is co-linear with a car's horsepower, and the addition of these dummy variables complicates the quantification of the automatic vs. manual transmission effect since the intercept is now defined as automatic 4-cylinder cars. 
+
+```{r, echo=FALSE}
+champion <- fit2
+```
+
+## Residual diagnostics of champion model ##
+
+An image of 4 residual diagnostic plots in Appendix 2 reveal that residuals from the champion model are likely normally distributed with a mean of zero. Based on this analysis, it seems that this model does not break the assumptions of OLS.
+
+# Conclusion
+
+Accounting for vehicle weight and horsepower, our champion model reveals that, while it is possible that manual transmissions use less fuel per mile driven (higher MPG) than vehicles with an automatic transmission, this effect is not statistically different from zero at the $\alpha = 0.05$ level of significance.
+
+Rather, it seems that vehicle weight is a strong predicter of fuel-efficiency. Our model suggests that a car that weight 1,000 lbs more than the average vehicle will have a -2.88 lower MPG, all else being equal. The horsepower of a vehicle, an instrument for engine size and displacement, also has a negative effect on fuel efficiency. A vehicle with an additional 10 HP of engine power suggesting a reduction in MPG of 0.37. Both of these effects are statistically significant at the $\alpha = 0.05$ level of significance.
+
+However, given the small sample size, if we make the strong assumption that the coefficient on the transmission type is correct at 2.08 in order to quantitatively answer the main question behind this assignment, we would say that all else being equal, a vehicle with an automatic transmission will have a reduced fuel efficiency of 2.08 compared to a manual transmission vehicle. That said, I would again suggest that this analysis cannot answer the question of quantifying the MPG difference between automatic and manual transmission vehicles.
+
+# Appendix #
+
+## Appendix 1: Exploratory plots ##
+```{r}
+par(mfrow=c(2,2))
+plot(mtcars$am, mtcars$mpg, xlab = 'Manual transmission = 1', ylab = 'Fuel efficiency (mpg)')
+abline(lm(mpg~am, mtcars), col="red")
+plot(mtcars$wt, mtcars$mpg, xlab = 'Weight (1000 lbs)', ylab = 'Fuel efficiency (mpg)')
+abline(lm(mpg~wt, mtcars), col="red")
+plot(mtcars$disp, mtcars$mpg, xlab = 'Engine displacement (cu. in.)', ylab = 'Fuel efficiency (mpg)')
+abline(lm(mpg~disp, mtcars), col="red")
+plot(mtcars$hp, mtcars$mpg, xlab = 'Horse Power', ylab = 'Fuel efficiency (mpg)')
+abline(lm(mpg~hp, mtcars), col="red")
+```
+
+## Appendix 2: Residual diagnostic plots ##
+```{r}
+par(mfrow=c(2,2))
+plot(champion$residuals, main='Residual scatter plot', ylab='Residuals')
+abline(0, 0, col='red')
+hist(champion$residuals, main='Histogram of residuals', xlab='Residuals')
+qqnorm(champion$residuals)
+qqline(champion$residuals, col='red')
+qqPlot(champion, 'QQ-Plot with confidence interval')
+```
